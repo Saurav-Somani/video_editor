@@ -77,6 +77,46 @@ class _HomePageState extends State<HomePage> {
     command =
         '-y -i ${tempPaths[0]} -i ${tempPaths[1]} -i ${tempPaths[2]} -filter_complex \'[0:v][1:v][2:v]concat=n=3:v=1:a=0[out]\' -map \'[out]\' $outputPath';
     session = await FFmpegKit.execute(command);
+    // rc = await session.getReturnCode();
+
+    // if (ReturnCode.isSuccess(rc)) {
+    //   print("Success");
+    // } else if (ReturnCode.isCancel(rc)) {
+    //   print("Cancelled");
+    // } else {
+    //   print("Nothing");
+    // }
+
+    tempPaths.add(outputPath);
+
+    String audioDest =
+        "${appDocDir.path}/${DateTime.now().millisecondsSinceEpoch}.mp4";
+    String audioPath = appDocDir.path + '/audio-1017.mp3';
+    String imagePath = appDocDir.path + '/FlyingEagle.jpg';
+    command =
+        "-y -i $outputPath -i $audioPath -map 0:v -map 1:a -c:v copy $audioDest";
+
+    session = await FFmpegKit.execute(command);
+    // rc = await session.getReturnCode();
+
+    // if (ReturnCode.isSuccess(rc)) {
+    //   print("audio Success");
+    // } else if (ReturnCode.isCancel(rc)) {
+    //   print("audio Cancelled");
+    // } else {
+    //   print("audio Nothing");
+    // }
+
+    outputPath = audioDest;
+    tempPaths.add(outputPath);
+
+    String Watermarkpath =
+        "${appDocDir.path}/${DateTime.now().millisecondsSinceEpoch}.mp4";
+    command =
+        '-i $outputPath -i $imagePath -filter_complex "[1]format=rgba,colorchannelmixer=aa=0.2[logo];[0][logo]overlay=5:5:format=auto,format=yuv420p" -codec:a copy $Watermarkpath';
+
+    session = await FFmpegKit.execute(command);
+    outputPath = Watermarkpath;
     rc = await session.getReturnCode();
 
     if (ReturnCode.isSuccess(rc)) {
@@ -87,24 +127,9 @@ class _HomePageState extends State<HomePage> {
       print("Nothing");
     }
 
-    print(outputPath);
-
-    VideoWatermark videoWatermark = VideoWatermark(
-      sourceVideoPath: outputPath,
-      watermark: Watermark(
-          image: WatermarkSource.asset('assets/images/FlyingEagle.jpg'),
-          watermarkAlignment: WatermarkAlignment.topCenter,
-          watermarkSize: const WatermarkSize(50, 50),
-          opacity: 0.5 //0.0 - 1.0
-          ),
-      onSave: (path) {
-        print("Hello");
-        outputPath = path ?? outputPath;
-      },
-    );
-
-    print(outputPath);
-    print(videoWatermark.generateVideo());
+    for (var p in tempPaths) {
+      File(p).delete();
+    }
   }
 
   void _pickImage() async {
