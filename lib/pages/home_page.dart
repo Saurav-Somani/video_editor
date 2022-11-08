@@ -2,6 +2,7 @@
 import 'dart:io';
 
 //import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
+import 'package:droame/pages/share_page.dart';
 import 'package:video_watermark/video_watermark.dart';
 import 'package:ffmpeg_kit_flutter_min/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_min/ffprobe_kit.dart';
@@ -21,10 +22,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _picker = ImagePicker();
 
-  void _segmentVideo(String path, double duration) async {
+  Future<String> _segmentVideo(String path, double duration) async {
     var segments = [0, duration / 3, duration * 2 / 3];
 
-    // segments.shuffle();
     segments = segments.reversed.toList();
 
     Directory appDocDir = Directory('/storage/emulated/0/Download');
@@ -40,16 +40,6 @@ class _HomePageState extends State<HomePage> {
 
     var session = await FFmpegKit.execute(command);
     var rc = await session.getReturnCode();
-
-    // print(rc);
-
-    // if (ReturnCode.isSuccess(rc)) {
-    //   print("Success");
-    // } else if (ReturnCode.isCancel(rc)) {
-    //   print("Cancelled");
-    // } else {
-    //   print("Nothing");
-    // }
 
     outputPath =
         "${appDocDir.path}/${DateTime.now().millisecondsSinceEpoch}.mp4";
@@ -77,15 +67,6 @@ class _HomePageState extends State<HomePage> {
     command =
         '-y -i ${tempPaths[0]} -i ${tempPaths[1]} -i ${tempPaths[2]} -filter_complex \'[0:v][1:v][2:v]concat=n=3:v=1:a=0[out]\' -map \'[out]\' $outputPath';
     session = await FFmpegKit.execute(command);
-    // rc = await session.getReturnCode();
-
-    // if (ReturnCode.isSuccess(rc)) {
-    //   print("Success");
-    // } else if (ReturnCode.isCancel(rc)) {
-    //   print("Cancelled");
-    // } else {
-    //   print("Nothing");
-    // }
 
     tempPaths.add(outputPath);
 
@@ -97,26 +78,17 @@ class _HomePageState extends State<HomePage> {
         "-y -i $outputPath -i $audioPath -map 0:v -map 1:a -c:v copy $audioDest";
 
     session = await FFmpegKit.execute(command);
-    // rc = await session.getReturnCode();
-
-    // if (ReturnCode.isSuccess(rc)) {
-    //   print("audio Success");
-    // } else if (ReturnCode.isCancel(rc)) {
-    //   print("audio Cancelled");
-    // } else {
-    //   print("audio Nothing");
-    // }
 
     outputPath = audioDest;
     tempPaths.add(outputPath);
 
-    String Watermarkpath =
+    String watermarkPath =
         "${appDocDir.path}/${DateTime.now().millisecondsSinceEpoch}.mp4";
     command =
-        '-i $outputPath -i $imagePath -filter_complex "[1]format=rgba,colorchannelmixer=aa=0.2[logo];[0][logo]overlay=5:5:format=auto,format=yuv420p" -codec:a copy $Watermarkpath';
+        '-i $outputPath -i $imagePath -filter_complex "[1]format=rgba,colorchannelmixer=aa=0.2[logo];[0][logo]overlay=5:5:format=auto,format=yuv420p" -codec:a copy $watermarkPath';
 
     session = await FFmpegKit.execute(command);
-    outputPath = Watermarkpath;
+    outputPath = watermarkPath;
     rc = await session.getReturnCode();
 
     if (ReturnCode.isSuccess(rc)) {
@@ -130,9 +102,11 @@ class _HomePageState extends State<HomePage> {
     for (var p in tempPaths) {
       File(p).delete();
     }
+
+    return outputPath;
   }
 
-  void _pickImage() async {
+  void _pickImage(BuildContext context) async {
     final video = await _picker.pickVideo(source: ImageSource.gallery);
 
     if (video == null) {
@@ -151,18 +125,40 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    _segmentVideo(video.path, duration);
+    String videoPath = await _segmentVideo(video.path, duration);
+
+    print("Saurav Somani");
+  }
+
+  void _tranferVideo(BuildContext context) async {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => SharePage(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: Center(
-          child: TextButton(
-        child: const Text("Pick video"),
-        onPressed: () => _pickImage(),
-      )),
-    );
+        appBar: AppBar(title: Text(widget.title)),
+        body: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Center(
+                child: TextButton(
+              child: const Text("Pick video to split and Merge"),
+              onPressed: () => _pickImage(context),
+            )),
+            const SizedBox(
+              height: 5.0,
+            ),
+            Center(
+                child: TextButton(
+              child: const Text("Transfer Video"),
+              onPressed: () => _tranferVideo(context),
+            )),
+          ],
+        ));
   }
 }
